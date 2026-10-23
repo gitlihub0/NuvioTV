@@ -50,6 +50,7 @@ import com.nuvio.tv.domain.repository.StreamRepository
 import com.nuvio.tv.domain.repository.WatchProgressRepository
 import com.nuvio.tv.ui.components.SourceChipItem
 import com.nuvio.tv.ui.components.SourceChipStatus
+import com.nuvio.tv.ui.screens.player.StreamSidecarAudio
 import com.nuvio.tv.ui.screens.player.StreamSidecarSubtitles
 import com.nuvio.tv.ui.util.localizedGenreLabel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -1347,6 +1348,7 @@ class StreamScreenViewModel @Inject constructor(
                     videoSize = result.videoSize ?: basePlaybackInfo.videoSize
                 )
                 StreamSidecarSubtitles.set(result.url, stream.subtitles)
+                StreamSidecarAudio.set(result.url, stream.externalAudios)
                 // Save resolved URL to cache for reuse last link
                 if (!result.url.isNullOrBlank()) {
                     pendingCacheSaveJob = viewModelScope.launch {
@@ -1401,6 +1403,7 @@ class StreamScreenViewModel @Inject constructor(
             return null
         }
         StreamSidecarSubtitles.set(session.url, session.subtitles + stream.subtitles)
+        StreamSidecarAudio.set(session.url, stream.externalAudios)
         return getStreamForPlayback(stream).copy(
             url = session.url,
             headers = session.headers.takeIf { it.isNotEmpty() },
@@ -1581,6 +1584,7 @@ class StreamScreenViewModel @Inject constructor(
             audioDelayLanguage = stream.behaviorHints?.audioDelayLanguage
         )
         StreamSidecarSubtitles.set(playbackUrlFor(playbackInfo), stream.subtitles)
+        StreamSidecarAudio.set(playbackUrlFor(playbackInfo), stream.externalAudios)
 
         val url = playbackInfo.url
         if (saveLastLink && !url.isNullOrBlank() && !playbackInfo.isExternal) {
