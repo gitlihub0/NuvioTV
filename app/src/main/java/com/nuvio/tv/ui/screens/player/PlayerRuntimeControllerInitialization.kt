@@ -1086,7 +1086,8 @@ internal fun PlayerRuntimeController.initializePlayer(
                     mimeTypeOverride = currentStreamMimeType,
                     audioDelayUsProvider = audioDelayUs::get,
                     mediaMetadata = buildMediaSessionMetadata(),
-                    cacheKey = currentStreamCacheKey
+                    cacheKey = currentStreamCacheKey,
+                    externalAudios = streamExternalAudios
                 )
 
                 if (initialResumePosition > 0L) {

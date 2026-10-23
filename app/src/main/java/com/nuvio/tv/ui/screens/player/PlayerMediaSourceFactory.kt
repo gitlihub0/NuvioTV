@@ -22,6 +22,7 @@ import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
@@ -172,7 +173,77 @@ internal class PlayerMediaSourceFactory(private val context: Context) {
         mimeTypeOverride: String? = null,
         audioDelayUsProvider: (() -> Long)? = null,
         mediaMetadata: androidx.media3.common.MediaMetadata? = null,
-        cacheKey: String? = null
+        cacheKey: String? = null,
+        externalAudios: List<com.nuvio.tv.domain.model.ExternalAudio> = emptyList()
+    ): MediaSource {
+        val base = createBaseMediaSource(
+            context = context,
+            url = url,
+            headers = headers,
+            subtitleConfigurations = subtitleConfigurations,
+            subtitleRoutes = subtitleRoutes,
+            filename = filename,
+            responseHeaders = responseHeaders,
+            mimeTypeOverride = mimeTypeOverride,
+            audioDelayUsProvider = audioDelayUsProvider,
+            mediaMetadata = mediaMetadata,
+            cacheKey = cacheKey
+        )
+        val audioSources = externalAudios.mapNotNull { createExternalAudioSource(context, it) }
+        if (audioSources.isEmpty()) return base
+        // The delay wrapper stays on the video source; the dub is aligned with the same offset
+        // path by the caller if needed. clipDurations keeps the shorter source from stalling.
+        return MergingMediaSource(false, true, base, *audioSources.toTypedArray())
+    }
+
+    private fun createExternalAudioSource(
+        context: Context,
+        audio: com.nuvio.tv.domain.model.ExternalAudio
+    ): MediaSource? {
+        val audioUrl = audio.url.substringBefore("#.m3u8").takeIf { it.startsWith("http") } ?: return null
+        val audioHeaders = sanitizeHeaders(audio.headers.orEmpty())
+        val mime = if (audioUrl.contains(".mpd", ignoreCase = true)) {
+            MimeTypes.APPLICATION_MPD
+        } else if (audioUrl.contains(".m3u8", ignoreCase = true) ||
+            audio.url.endsWith("#.m3u8")
+        ) {
+            MimeTypes.APPLICATION_M3U8
+        } else {
+            null
+        }
+        val dataSourceFactory = DefaultDataSource.Factory(
+            context,
+            PlayerPlaybackNetworking.createHttpDataSourceFactory(audioHeaders, useLongReadTimeout = false)
+        )
+        val itemBuilder = MediaItem.Builder().setUri(audioUrl)
+        mime?.let(itemBuilder::setMimeType)
+        val item = itemBuilder.build()
+        return when (mime) {
+            MimeTypes.APPLICATION_M3U8 -> HlsMediaSource.Factory(dataSourceFactory)
+                .setAllowChunklessPreparation(true)
+                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+                .createMediaSource(item)
+            MimeTypes.APPLICATION_MPD -> DashMediaSource.Factory(dataSourceFactory)
+                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+                .createMediaSource(item)
+            else -> DefaultMediaSourceFactory(dataSourceFactory)
+                .setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+                .createMediaSource(item)
+        }
+    }
+
+    private fun createBaseMediaSource(
+        context: Context,
+        url: String,
+        headers: Map<String, String>,
+        subtitleConfigurations: List<MediaItem.SubtitleConfiguration>,
+        subtitleRoutes: Map<String, SubtitleRoute>,
+        filename: String?,
+        responseHeaders: Map<String, String>,
+        mimeTypeOverride: String?,
+        audioDelayUsProvider: (() -> Long)?,
+        mediaMetadata: androidx.media3.common.MediaMetadata?,
+        cacheKey: String?
     ): MediaSource {
         val sanitizedHeaders = sanitizeHeaders(headers)
         val resolvedMimeType = mimeTypeOverride ?: inferMimeType(
