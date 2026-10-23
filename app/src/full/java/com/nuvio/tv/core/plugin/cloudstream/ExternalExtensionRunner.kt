@@ -895,7 +895,36 @@ class ExternalExtensionRunner @Inject constructor(
             type = streamType,
             headers = allHeaders.ifEmpty { null },
             provider = providerName,
-            subtitles = subtitles
+            subtitles = subtitles,
+            externalAudios = toExternalAudios()
         )
+    }
+
+    /**
+     * Reads ExtractorLink.audioTracks reflectively (same approach as SubtitleFile headers) so the
+     * build does not depend on the CloudStream library version exposing the property.
+     * The "#.m3u8" URL hint is kept; the player strips it and uses it to pick the HLS loader.
+     */
+    private fun ExtractorLink.toExternalAudios(): List<com.nuvio.tv.domain.model.ExternalAudio> {
+        return runCatching {
+            val getter = javaClass.methods.find { it.name == "getAudioTracks" } ?: return@runCatching emptyList()
+            val files = getter.invoke(this) as? List<*> ?: return@runCatching emptyList()
+            files.mapNotNull { file ->
+                if (file == null) return@mapNotNull null
+                val audioUrl = (file.javaClass.methods.find { it.name == "getUrl" }?.invoke(file) as? String)
+                    ?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+                    ?: return@mapNotNull null
+                @Suppress("UNCHECKED_CAST")
+                val audioHeaders = (file.javaClass.methods.find { it.name == "getHeaders" }?.invoke(file)
+                    as? Map<String, String>)?.ifEmpty { null }
+                com.nuvio.tv.domain.model.ExternalAudio(
+                    url = audioUrl,
+                    lang = "tr",
+                    label = "Türkçe Dublaj",
+                    headers = audioHeaders
+                )
+            }
+        }.onFailure { Log.w(TAG, "audioTracks read failed: ${it.message}") }
+            .getOrDefault(emptyList())
     }
 }
