@@ -1461,6 +1461,7 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
             seekToChapter(chapter.startMs)
         }
         is PlayerEvent.OnAddExternalAudio -> addExternalAudio(event.url, event.referer)
+        PlayerEvent.OnSearchDubAudio -> searchDubAudio(manual = true)
         is PlayerEvent.OnSelectAudioTrack -> {
             logSwitchTrace(
                 stage = "event-select-audio",

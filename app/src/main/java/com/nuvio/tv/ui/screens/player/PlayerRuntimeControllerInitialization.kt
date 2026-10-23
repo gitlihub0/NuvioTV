@@ -1161,6 +1161,10 @@ internal fun PlayerRuntimeController.initializePlayer(
                         )
                         if (playbackState == Player.STATE_READY) {
                             mediaSourceFactory.unlockStartupPrefetch()
+                            if (!dubAutoSearchStarted) {
+                                dubAutoSearchStarted = true
+                                searchDubAudio(manual = false)
+                            }
                         }
                         val playerDuration = duration
                         if (playerDuration > lastKnownDuration) { lastKnownDuration = playerDuration }

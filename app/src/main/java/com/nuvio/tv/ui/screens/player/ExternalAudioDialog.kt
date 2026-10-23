@@ -51,7 +51,7 @@ internal fun ExternalAudioDialog(
         onDismiss = onDismiss,
         title = "Harici ses ekle",
         subtitle = "Sadece ses içeren bir bağlantı (.m3u8, .mp3, .aac ...) girin. " +
-            "Gerekirse Referer ekleyin. Uzantısız HLS bağlantılarının sonuna #.m3u8 ekleyin."
+            "Gerekirse Referer ekleyin. Uzantısız bağlantılar HLS olarak açılır."
     ) {
         ExternalAudioField(
             value = url,

@@ -199,6 +199,11 @@ internal class PlayerMediaSourceFactory(private val context: Context) {
         return MergingMediaSource(false, true, base, *audioSources.toTypedArray())
     }
 
+    private fun hasDirectAudioExtension(url: String): Boolean {
+        val path = url.substringBefore('#').substringBefore('?').lowercase()
+        return DIRECT_AUDIO_EXTENSIONS.any { path.endsWith(".$it") }
+    }
+
     private fun createExternalAudioSource(
         context: Context,
         audio: com.nuvio.tv.domain.model.ExternalAudio
@@ -211,8 +216,11 @@ internal class PlayerMediaSourceFactory(private val context: Context) {
             audio.url.endsWith("#.m3u8")
         ) {
             MimeTypes.APPLICATION_M3U8
-        } else {
+        } else if (hasDirectAudioExtension(audioUrl)) {
             null
+        } else {
+            // Extensionless audio links (typical for CDN playlists) are HLS.
+            MimeTypes.APPLICATION_M3U8
         }
         val dataSourceFactory = DefaultDataSource.Factory(
             context,
@@ -1176,6 +1184,9 @@ internal class PlayerMediaSourceFactory(private val context: Context) {
                 )
             }
         }
+
+        private val DIRECT_AUDIO_EXTENSIONS =
+            listOf("mp3", "aac", "m4a", "ogg", "opus", "flac", "wav", "mka", "ac3", "eac3", "mp4", "webm")
 
         private val DELIMITED_M3U8_PATTERN = Regex("(^|[=/_.?&-])(m3u8|m3u)($|[=/_.?&-])")
         private val PLAYLIST_HLS_PATTERN = Regex("/(playlist|hls|manifest|master|vs)/(?!stream$|list$|info$|details$)[a-zA-Z0-9_/-]+$")

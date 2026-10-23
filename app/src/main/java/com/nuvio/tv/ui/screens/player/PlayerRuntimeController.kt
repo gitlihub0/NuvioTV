@@ -238,6 +238,8 @@ class PlayerRuntimeController(
     internal var currentHeaders: Map<String, String>
     internal var streamSubtitles: List<Subtitle> = emptyList()
     internal var streamExternalAudios: List<com.nuvio.tv.domain.model.ExternalAudio> = emptyList()
+    internal var dubSearchJob: kotlinx.coroutines.Job? = null
+    internal var dubAutoSearchStarted = false
 
     init {
         val initialPlaybackRequest = PlayerMediaSourceFactory.normalizePlaybackRequest(

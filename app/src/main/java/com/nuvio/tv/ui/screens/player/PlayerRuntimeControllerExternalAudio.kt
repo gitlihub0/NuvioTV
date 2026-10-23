@@ -45,17 +45,31 @@ internal fun PlayerRuntimeController.addExternalAudio(rawUrl: String, referer: S
         }
     }
 
-    val audio = ExternalAudio(
-        url = url,
-        lang = "tr",
-        label = "Türkçe Dublaj (harici)",
-        headers = headers.ifEmpty { null }
+    attachExternalAudio(
+        ExternalAudio(
+            url = url,
+            lang = "tr",
+            label = "Türkçe Dublaj (harici)",
+            headers = headers.ifEmpty { null }
+        )
     )
+}
+
+/**
+ * Merges [audio] into the running stream and selects it. Shared by the manual URL dialog and the
+ * remote dub-source search. Must be called on the main thread.
+ */
+internal fun PlayerRuntimeController.attachExternalAudio(audio: ExternalAudio) {
+    val player = _exoPlayer ?: return
+    if (streamExternalAudios.any { it.url == audio.url }) return
     streamExternalAudios = streamExternalAudios + audio
     // MergingMediaSource child index of the audio we just added (0 is the main stream).
     val newChildIndex = streamExternalAudios.size
 
-    Log.i(EXTERNAL_AUDIO_TAG, "Adding external audio url=${url.take(80)} headers=${headers.keys} children=$newChildIndex")
+    Log.i(
+        EXTERNAL_AUDIO_TAG,
+        "Adding external audio url=${audio.url.take(80)} headers=${audio.headers?.keys} children=$newChildIndex"
+    )
 
     val position = player.currentPosition
     val playWhenReady = player.playWhenReady

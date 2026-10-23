@@ -1990,6 +1990,10 @@ fun PlayerScreen(
                 showExternalAudioDialog = true
                 viewModel.onEvent(PlayerEvent.OnDismissTransientOverlay)
             },
+            onSearchDubAudio = {
+                viewModel.onEvent(PlayerEvent.OnSearchDubAudio)
+                viewModel.onEvent(PlayerEvent.OnDismissTransientOverlay)
+            },
             visible = uiState.showAudioOverlay,
             tracks = uiState.serverAudioTracks.ifEmpty { uiState.audioTracks },
             selectedIndex = uiState.serverAudioTracks.firstOrNull { it.isSelected }?.index ?: uiState.selectedAudioTrackIndex,

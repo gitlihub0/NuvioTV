@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -77,7 +78,8 @@ internal fun AudioSelectionOverlay(
     onPersistAmplificationChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    onAddExternalAudio: () -> Unit = {}
+    onAddExternalAudio: () -> Unit = {},
+    onSearchDubAudio: () -> Unit = {}
 ) {
     val tracksFocusRequester = remember { FocusRequester() }
     val delayMinusFocusRequester = remember { FocusRequester() }
@@ -198,7 +200,8 @@ internal fun AudioSelectionOverlay(
                         },
                         onTrackFocused = { lastFocusedAudioIndex = it },
                         onTrackSelected = onTrackSelected,
-                        onAddExternalAudio = onAddExternalAudio
+                        onAddExternalAudio = onAddExternalAudio,
+                        onSearchDubAudio = onSearchDubAudio
                     )
                 }
                 Column(modifier = Modifier.width(268.dp)) {
@@ -240,7 +243,8 @@ private fun AudioTracksContent(
     rightFocusRequester: FocusRequester,
     onTrackFocused: (Int) -> Unit,
     onTrackSelected: (Int) -> Unit,
-    onAddExternalAudio: () -> Unit
+    onAddExternalAudio: () -> Unit,
+    onSearchDubAudio: () -> Unit
 ) {
     if (tracks.isEmpty()) {
         Text(
@@ -249,6 +253,7 @@ private fun AudioTracksContent(
             color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier.padding(top = NuvioTheme.spacing.sm, bottom = NuvioTheme.spacing.md)
         )
+        SearchDubAudioCard(onClick = onSearchDubAudio, rightFocusRequester = rightFocusRequester)
         AddExternalAudioCard(onClick = onAddExternalAudio, rightFocusRequester = rightFocusRequester)
         return
     }
@@ -277,6 +282,9 @@ private fun AudioTracksContent(
                 }
             )
         }
+        item(key = "search_dub_audio") {
+            SearchDubAudioCard(onClick = onSearchDubAudio, rightFocusRequester = rightFocusRequester)
+        }
         item(key = "add_external_audio") {
             AddExternalAudioCard(onClick = onAddExternalAudio, rightFocusRequester = rightFocusRequester)
         }
@@ -285,6 +293,34 @@ private fun AudioTracksContent(
 
 @Composable
 private fun AddExternalAudioCard(
+    onClick: () -> Unit,
+    rightFocusRequester: FocusRequester
+) {
+    AudioActionCard(
+        label = "Harici ses ekle (URL)",
+        icon = Icons.Default.Add,
+        onClick = onClick,
+        rightFocusRequester = rightFocusRequester
+    )
+}
+
+@Composable
+private fun SearchDubAudioCard(
+    onClick: () -> Unit,
+    rightFocusRequester: FocusRequester
+) {
+    AudioActionCard(
+        label = "Türkçe dublaj ara",
+        icon = Icons.Default.Search,
+        onClick = onClick,
+        rightFocusRequester = rightFocusRequester
+    )
+}
+
+@Composable
+private fun AudioActionCard(
+    label: String,
+    icon: ImageVector,
     onClick: () -> Unit,
     rightFocusRequester: FocusRequester
 ) {
@@ -316,12 +352,12 @@ private fun AddExternalAudioCard(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Add,
+                imageVector = icon,
                 contentDescription = null,
                 tint = Color.White
             )
             Text(
-                text = "Harici ses ekle (URL)",
+                text = label,
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White
             )
