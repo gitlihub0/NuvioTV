@@ -76,7 +76,8 @@ internal fun AudioSelectionOverlay(
     onCenterMixLevelChange: (Int) -> Unit,
     onPersistAmplificationChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onAddExternalAudio: () -> Unit = {}
 ) {
     val tracksFocusRequester = remember { FocusRequester() }
     val delayMinusFocusRequester = remember { FocusRequester() }
@@ -196,7 +197,8 @@ internal fun AudioSelectionOverlay(
                             else -> persistFocusRequester
                         },
                         onTrackFocused = { lastFocusedAudioIndex = it },
-                        onTrackSelected = onTrackSelected
+                        onTrackSelected = onTrackSelected,
+                        onAddExternalAudio = onAddExternalAudio
                     )
                 }
                 Column(modifier = Modifier.width(268.dp)) {
@@ -237,7 +239,8 @@ private fun AudioTracksContent(
     initialFocusRequester: FocusRequester,
     rightFocusRequester: FocusRequester,
     onTrackFocused: (Int) -> Unit,
-    onTrackSelected: (Int) -> Unit
+    onTrackSelected: (Int) -> Unit,
+    onAddExternalAudio: () -> Unit
 ) {
     if (tracks.isEmpty()) {
         Text(
@@ -246,6 +249,7 @@ private fun AudioTracksContent(
             color = Color.White.copy(alpha = 0.7f),
             modifier = Modifier.padding(top = NuvioTheme.spacing.sm, bottom = NuvioTheme.spacing.md)
         )
+        AddExternalAudioCard(onClick = onAddExternalAudio, rightFocusRequester = rightFocusRequester)
         return
     }
 
@@ -271,6 +275,55 @@ private fun AudioTracksContent(
                 } else {
                     null
                 }
+            )
+        }
+        item(key = "add_external_audio") {
+            AddExternalAudioCard(onClick = onAddExternalAudio, rightFocusRequester = rightFocusRequester)
+        }
+    }
+}
+
+@Composable
+private fun AddExternalAudioCard(
+    onClick: () -> Unit,
+    rightFocusRequester: FocusRequester
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusProperties { right = rightFocusRequester },
+        colors = CardDefaults.colors(
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent
+        ),
+        shape = CardDefaults.shape(RoundedCornerShape(NuvioTheme.radii.md)),
+        border = CardDefaults.border(
+            border = Border(
+                border = BorderStroke(NuvioTheme.spacing.xxs, Color.Transparent),
+                shape = RoundedCornerShape(NuvioTheme.radii.md)
+            ),
+            focusedBorder = Border(
+                border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
+                shape = RoundedCornerShape(NuvioTheme.radii.md)
+            )
+        ),
+        scale = CardDefaults.scale(focusedScale = 1f, pressedScale = 1f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = Color.White
+            )
+            Text(
+                text = "Harici ses ekle (URL)",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White
             )
         }
     }

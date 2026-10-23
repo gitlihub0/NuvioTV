@@ -1460,6 +1460,7 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
             _uiState.update { it.copy(showChaptersPanel = false) }
             seekToChapter(chapter.startMs)
         }
+        is PlayerEvent.OnAddExternalAudio -> addExternalAudio(event.url, event.referer)
         is PlayerEvent.OnSelectAudioTrack -> {
             logSwitchTrace(
                 stage = "event-select-audio",

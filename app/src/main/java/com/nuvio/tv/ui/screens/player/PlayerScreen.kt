@@ -1973,7 +1973,23 @@ fun PlayerScreen(
         }
 
         // Audio track dialog
+        var showExternalAudioDialog by remember { mutableStateOf(false) }
+        if (showExternalAudioDialog) {
+            ExternalAudioDialog(
+                onDismiss = { showExternalAudioDialog = false },
+                onConfirm = { audioUrl, audioReferer ->
+                    showExternalAudioDialog = false
+                    viewModel.onEvent(
+                        PlayerEvent.OnAddExternalAudio(audioUrl, audioReferer.ifBlank { null })
+                    )
+                }
+            )
+        }
         AudioSelectionOverlay(
+            onAddExternalAudio = {
+                showExternalAudioDialog = true
+                viewModel.onEvent(PlayerEvent.OnDismissTransientOverlay)
+            },
             visible = uiState.showAudioOverlay,
             tracks = uiState.serverAudioTracks.ifEmpty { uiState.audioTracks },
             selectedIndex = uiState.serverAudioTracks.firstOrNull { it.isSelected }?.index ?: uiState.selectedAudioTrackIndex,

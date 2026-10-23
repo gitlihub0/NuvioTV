@@ -318,6 +318,7 @@ sealed class PlayerEvent {
     data object OnDismissChaptersPanel : PlayerEvent()
     data class OnSelectChapter(val index: Int) : PlayerEvent()
     data class OnSelectAudioTrack(val index: Int) : PlayerEvent()
+    data class OnAddExternalAudio(val url: String, val referer: String?) : PlayerEvent()
     data class OnSetAudioDelayMs(val delayMs: Int) : PlayerEvent()
     data class OnSetAudioAmplificationDb(val db: Int) : PlayerEvent()
     data class OnSetPersistAudioAmplification(val enabled: Boolean) : PlayerEvent()
