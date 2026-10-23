@@ -887,6 +887,10 @@ class ExternalExtensionRunner @Inject constructor(
             if (referer.isNotBlank()) put("Referer", referer)
         }
 
+        val externalAudios = toExternalAudios()
+        if (externalAudios.isNotEmpty()) {
+            Log.i(TAG, "EXTERNAL_AUDIO: ${externalAudios.size} track(s) on link source=$source")
+        }
         return LocalScraperResult(
             title = name,
             name = source,
@@ -896,7 +900,7 @@ class ExternalExtensionRunner @Inject constructor(
             headers = allHeaders.ifEmpty { null },
             provider = providerName,
             subtitles = subtitles,
-            externalAudios = toExternalAudios()
+            externalAudios = externalAudios
         )
     }
 

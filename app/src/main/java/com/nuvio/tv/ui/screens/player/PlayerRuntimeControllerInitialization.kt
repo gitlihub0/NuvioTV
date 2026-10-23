@@ -227,6 +227,20 @@ internal fun PlayerRuntimeController.initializePlayer(
             if (effectiveInternalPlayerEngine == InternalPlayerEngine.AUTO) {
                 effectiveInternalPlayerEngine = resolveAutoInternalPlayerEngine()
             }
+            // External dub audio is merged through ExoPlayer's MergingMediaSource only.
+            if (streamExternalAudios.isNotEmpty() &&
+                effectiveInternalPlayerEngine != InternalPlayerEngine.EXOPLAYER
+            ) {
+                Log.i(
+                    PlayerRuntimeController.TAG,
+                    "EXTERNAL_AUDIO: forcing EXOPLAYER (was $effectiveInternalPlayerEngine)"
+                )
+                effectiveInternalPlayerEngine = InternalPlayerEngine.EXOPLAYER
+            }
+            Log.i(
+                PlayerRuntimeController.TAG,
+                "EXTERNAL_AUDIO: count=${streamExternalAudios.size} engine=$effectiveInternalPlayerEngine"
+            )
             runtimeInternalPlayerEngineOverride = overrideInternalPlayerEngine
             if (overrideInternalPlayerEngine == null && playerSettings.internalPlayerEngine == InternalPlayerEngine.AUTO) {
                 resolvedAutoPlayerEngine = effectiveInternalPlayerEngine

@@ -190,6 +190,9 @@ internal class PlayerMediaSourceFactory(private val context: Context) {
             cacheKey = cacheKey
         )
         val audioSources = externalAudios.mapNotNull { createExternalAudioSource(context, it) }
+        if (externalAudios.isNotEmpty()) {
+            Log.i(LOG_TAG, "EXTERNAL_AUDIO: requested=${externalAudios.size} built=${audioSources.size}")
+        }
         if (audioSources.isEmpty()) return base
         // The delay wrapper stays on the video source; the dub is aligned with the same offset
         // path by the caller if needed. clipDurations keeps the shorter source from stalling.

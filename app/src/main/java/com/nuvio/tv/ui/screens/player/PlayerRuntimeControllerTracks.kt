@@ -114,7 +114,15 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                     val langDisplay = format.language?.takeIf { it != "und" }?.let {
                         com.nuvio.tv.ui.util.languageCodeToName(it)
                     }
-                    val baseName = format.label ?: langDisplay ?: context.getString(com.nuvio.tv.R.string.player_track_audio_fallback, audioTracks.size + 1)
+                    // MergingMediaPeriod prefixes group ids with the child source index ("0:", "1:"...);
+                    // child 0 is the main stream, children 1.. are the external audio sources.
+                    val externalChildIndex = if (streamExternalAudios.isEmpty()) 0 else {
+                        trackGroup.mediaTrackGroup.id.substringBefore(':').toIntOrNull() ?: 0
+                    }
+                    val externalAudio = if (externalChildIndex >= 1) {
+                        streamExternalAudios.getOrNull(externalChildIndex - 1)
+                    } else null
+                    val baseName = externalAudio?.label ?: format.label ?: langDisplay ?: context.getString(com.nuvio.tv.R.string.player_track_audio_fallback, audioTracks.size + 1)
                     val suffix = listOfNotNull(codecName, channelLayout).joinToString(" ")
                     val displayName = if (suffix.isNotEmpty()) "$baseName ($suffix)" else baseName
 
@@ -122,7 +130,7 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                         TrackInfo(
                             index = audioTracks.size,
                             name = displayName,
-                            language = format.language,
+                            language = externalAudio?.lang ?: format.language,
                             trackId = format.id,
                             codec = codecName,
                             channelCount = format.channelCount.takeIf { it > 0 },
