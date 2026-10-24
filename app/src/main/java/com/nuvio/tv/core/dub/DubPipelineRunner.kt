@@ -104,8 +104,12 @@ internal class DubPipelineRunner(private val http: OkHttpClient) {
                 }
                 "regex" -> {
                     val patterns = mutableListOf<String>()
-                    p.optJSONArray("patterns")?.let { arr ->
-                        for (k in 0 until arr.length()) arr.optString(k, "").takeIf { it.isNotEmpty() }?.let(patterns::add)
+                    val patternArr = p.optJSONArray("patterns")
+                    if (patternArr != null) {
+                        for (k in 0 until patternArr.length()) {
+                            val item = patternArr.optString(k, "")
+                            if (item.isNotEmpty()) patterns.add(item)
+                        }
                     }
                     if (patterns.isEmpty()) patterns.add(p.optString("pattern", ""))
                     var found: String? = null
@@ -135,9 +139,10 @@ internal class DubPipelineRunner(private val http: OkHttpClient) {
                         ?: return fail(provider, step, "bad pattern")
                     val template = p.optString("with", "")
                     val shifts = HashMap<Int, Int>()
-                    p.optJSONArray("shift")?.let { arr ->
-                        for (k in 0 until arr.length()) {
-                            val o = arr.optJSONObject(k) ?: continue
+                    val shiftArr = p.optJSONArray("shift")
+                    if (shiftArr != null) {
+                        for (k in 0 until shiftArr.length()) {
+                            val o = shiftArr.optJSONObject(k) ?: continue
                             shifts[o.optInt("group", -1)] = o.optInt("delta", 0)
                         }
                     }
@@ -148,7 +153,8 @@ internal class DubPipelineRunner(private val http: OkHttpClient) {
                             val d = shifts[k]
                             if (d != null && v.length == 1 && v[0].isLetter()) {
                                 val base = if (v[0].isLowerCase()) 'a' else 'A'
-                                v = (((v[0] - base + d) % 26 + 26) % 26 + base.code).toChar().toString()
+                                val shifted = ((v[0].code - base.code + d) % 26 + 26) % 26 + base.code
+                                v = shifted.toChar().toString()
                             }
                             v
                         }
