@@ -17,7 +17,7 @@ private const val DEFAULT_UA =
 
 /**
  * Runs a provider recipe: search page, pick a result, then walk the listed steps
- * (http_get, regex, json_path, rot13, base64, reverse, shift_key, set, check) until one
+ * (http_get, regex, json_path, rot13, base64, reverse, shift_key, set, check, replace, require, hls_audio) until one
  * of them yields the audio URL. Only these built-in operations exist; the recipe is data.
  */
 internal class DubPipelineRunner(private val http: OkHttpClient) {
@@ -103,10 +103,18 @@ internal class DubPipelineRunner(private val http: OkHttpClient) {
                         ?: return fail(provider, step, "request failed: $url")
                 }
                 "regex" -> {
-                    val regex = buildRegex(p.optString("pattern", ""), p.optBoolean("dotAll", false), p.optBoolean("ignoreCase", false))
-                        ?: return fail(provider, step, "bad pattern")
-                    regex.find(input)?.groupValues?.getOrNull(p.optInt("group", 1))
-                        ?: return fail(provider, step, "no match")
+                    val patterns = mutableListOf<String>()
+                    p.optJSONArray("patterns")?.let { arr ->
+                        for (k in 0 until arr.length()) arr.optString(k, "").takeIf { it.isNotEmpty() }?.let(patterns::add)
+                    }
+                    if (patterns.isEmpty()) patterns.add(p.optString("pattern", ""))
+                    var found: String? = null
+                    for (pt in patterns) {
+                        val regex = buildRegex(pt, p.optBoolean("dotAll", false), p.optBoolean("ignoreCase", false)) ?: continue
+                        val v = regex.find(input)?.groupValues?.getOrNull(p.optInt("group", 1))
+                        if (v != null) { found = v; break }
+                    }
+                    found ?: return fail(provider, step, "no match")
                 }
                 "json_path" -> DubOps.jsonPath(input, p.optString("path", ""))
                     ?: return fail(provider, step, "path not found")
@@ -122,6 +130,50 @@ internal class DubPipelineRunner(private val http: OkHttpClient) {
                     add = p.optInt("add", 1),
                     subtract = p.optString("dir", "sub") != "add"
                 )
+                "replace" -> {
+                    val regex = buildRegex(p.optString("pattern", ""), false, p.optBoolean("ignoreCase", false))
+                        ?: return fail(provider, step, "bad pattern")
+                    val template = p.optString("with", "")
+                    val shifts = HashMap<Int, Int>()
+                    p.optJSONArray("shift")?.let { arr ->
+                        for (k in 0 until arr.length()) {
+                            val o = arr.optJSONObject(k) ?: continue
+                            shifts[o.optInt("group", -1)] = o.optInt("delta", 0)
+                        }
+                    }
+                    regex.replace(input.trim()) { m ->
+                        Regex("""\\(\d)""").replace(template) { ref ->
+                            val k = ref.groupValues[1].toInt()
+                            var v = m.groups[k]?.value.orEmpty()
+                            val d = shifts[k]
+                            if (d != null && v.length == 1 && v[0].isLetter()) {
+                                val base = if (v[0].isLowerCase()) 'a' else 'A'
+                                v = (((v[0] - base + d) % 26 + 26) % 26 + base.code).toChar().toString()
+                            }
+                            v
+                        }
+                    }
+                }
+                "require" -> {
+                    val target = input.trim().substringBefore('#')
+                    val regex = buildRegex(p.optString("pattern", ""), false, p.optBoolean("ignoreCase", true))
+                        ?: return fail(provider, step, "bad pattern")
+                    if (!regex.containsMatchIn(target)) {
+                        return fail(provider, step, "'${p.optString("pattern")}' does not match ${target.takeLast(40)} (not the wanted language)")
+                    }
+                    input
+                }
+                "hls_audio" -> {
+                    val ah = LinkedHashMap<String, String>()
+                    for ((k, v) in provider.audioHeaders) {
+                        expand(v, vars, strict = false)?.takeIf { it.isNotBlank() }?.let { ah[k] = it }
+                    }
+                    val playlistUrl = input.trim().substringBefore('#')
+                    val text = fetch(playlistUrl, ah["Referer"], ah)
+                        ?: return fail(provider, step, "playlist request failed: $playlistUrl")
+                    DubOps.hlsAudio(text, playlistUrl, p.optString("lang", "tr"), p.optString("name", ""))
+                        ?: return fail(provider, step, "no separate audio rendition for lang '${p.optString("lang", "tr")}' (link is video)")
+                }
                 "set" -> expand(p.optString("value", ""), vars + ("cur" to cur), strict = false)
                     ?: return fail(provider, step, "bad template")
                 "check" -> {
