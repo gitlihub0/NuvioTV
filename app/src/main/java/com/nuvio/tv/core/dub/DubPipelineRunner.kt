@@ -17,7 +17,8 @@ private const val DEFAULT_UA =
 
 /**
  * Runs a provider recipe: search page, pick a result, then walk the listed steps
- * (http_get, regex, json_path, rot13, base64, reverse, shift_key, set, check, replace, require, hls_audio) until one
+ * (http_get, regex, json_path, rot13, base64, reverse, shift_key, set, check, replace, require, hls_audio,
+ * js_unpack, rapidrame_decode) until one
  * of them yields the audio URL. Only these built-in operations exist; the recipe is data.
  */
 internal class DubPipelineRunner(private val http: OkHttpClient) {
@@ -99,7 +100,14 @@ internal class DubPipelineRunner(private val http: OkHttpClient) {
                         ?: return fail(provider, step, "url has unresolved variables")
                     val referer = p.optString("referer", "").takeIf { it.isNotEmpty() }
                         ?.let { expand(it, vars, strict = false) }
-                    fetch(url, referer, provider.headers)
+                    // Optional per-step "headers" object replaces the provider headers for this request
+                    // (an empty object sends none).
+                    val stepHeaders = p.optJSONObject("headers")?.let { o ->
+                        val m = LinkedHashMap<String, String>()
+                        for (key in o.keys()) m[key] = o.optString(key, "")
+                        m as Map<String, String>
+                    } ?: provider.headers
+                    fetch(url, referer, stepHeaders)
                         ?: return fail(provider, step, "request failed: $url")
                 }
                 "regex" -> {
@@ -123,6 +131,10 @@ internal class DubPipelineRunner(private val http: OkHttpClient) {
                 "json_path" -> DubOps.jsonPath(input, p.optString("path", ""))
                     ?: return fail(provider, step, "path not found")
                 "rot13" -> DubOps.rot13(input)
+                "js_unpack" -> DubOps.jsUnpack(input)
+                    ?: return fail(provider, step, "no packed script found")
+                "rapidrame_decode" -> DubOps.rapidrameDecode(input)?.trim()
+                    ?: return fail(provider, step, "rapidrame payload could not be decoded")
                 "reverse" -> input.reversed()
                 "trim" -> input.trim()
                 "base64" -> DubOps.base64Decode(input, charsetOf(p.optString("charset", "latin1")))
