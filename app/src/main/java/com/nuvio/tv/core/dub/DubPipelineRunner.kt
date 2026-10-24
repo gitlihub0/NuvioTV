@@ -177,7 +177,7 @@ internal class DubPipelineRunner(private val http: OkHttpClient) {
                     val playlistUrl = input.trim().substringBefore('#')
                     val text = fetch(playlistUrl, ah["Referer"], ah)
                         ?: return fail(provider, step, "playlist request failed: $playlistUrl")
-                    DubOps.hlsAudio(text, playlistUrl, p.optString("lang", "tr"), p.optString("name", ""))
+                    DubHls.audioUrl(text, playlistUrl, p.optString("lang", "tr"), p.optString("name", ""))
                         ?: return fail(provider, step, "no separate audio rendition for lang '${p.optString("lang", "tr")}' (link is video)")
                 }
                 "set" -> expand(p.optString("value", ""), vars + ("cur" to cur), strict = false)
