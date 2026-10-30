@@ -3,7 +3,7 @@ name: Build APK (dub audio)
 on:
   workflow_dispatch:
   push:
-    branches: [feature/external-dub-audio]
+    branches: [dev]
 
 permissions:
   contents: read
@@ -32,39 +32,43 @@ jobs:
         env:
           LOCAL_PROPERTIES_BASE64: ${{ secrets.LOCAL_PROPERTIES_BASE64 }}
           LOCAL_DEV_PROPERTIES_BASE64: ${{ secrets.LOCAL_DEV_PROPERTIES_BASE64 }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          AVATAR_PUBLIC_BASE_URL: ${{ secrets.AVATAR_PUBLIC_BASE_URL }}
         run: |
           if [ -n "$LOCAL_PROPERTIES_BASE64" ]; then
             printf '%s' "$LOCAL_PROPERTIES_BASE64" | base64 --decode > local.properties
           else
-            touch local.properties
+            : > local.properties
           fi
 
           if [ -n "$LOCAL_DEV_PROPERTIES_BASE64" ]; then
             printf '%s' "$LOCAL_DEV_PROPERTIES_BASE64" | base64 --decode > local.dev.properties
           else
-            touch local.dev.properties
+            : > local.dev.properties
           fi
 
-          # Uygulama NUVIO_ onekli anahtarlari okuyor; mevcut SUPABASE_ degerlerini bu adlarla da yaz
-          for f in local.properties local.dev.properties; do
-            sed -i 's/\r$//' "$f"
-            echo >> "$f"
-            for k in SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_FALLBACK_URL; do
-              v=$(grep -E "^(NUVIO_)?${k}=" "$f" | tail -n1 | cut -d= -f2-)
-              if [ -n "$v" ]; then
-                echo "NUVIO_${k}=${v}" >> "$f"
-              fi
-            done
-          done
+          # Plain secrets (if set) are appended last, so they win over anything above.
+          # Uygulama NUVIO_ onekli anahtarlari okuyor.
+          printf '\n' >> local.properties
+          if [ -n "$SUPABASE_URL" ]; then
+            printf 'NUVIO_SUPABASE_URL=%s\n' "$SUPABASE_URL" >> local.properties
+          fi
+          if [ -n "$SUPABASE_ANON_KEY" ]; then
+            printf 'NUVIO_SUPABASE_ANON_KEY=%s\n' "$SUPABASE_ANON_KEY" >> local.properties
+          fi
+          if [ -n "$AVATAR_PUBLIC_BASE_URL" ]; then
+            printf 'AVATAR_PUBLIC_BASE_URL=%s\n' "$AVATAR_PUBLIC_BASE_URL" >> local.properties
+          fi
+
+          # Debug builds read local.dev.properties first: give it the same values.
+          printf '\n' >> local.dev.properties
+          cat local.properties >> local.dev.properties
 
           echo "=== kontrol (degerler gosterilmez) ==="
           for f in local.properties local.dev.properties; do
             for k in NUVIO_SUPABASE_URL NUVIO_SUPABASE_ANON_KEY AVATAR_PUBLIC_BASE_URL; do
-              v=$(grep -E "^${k}=" "$f" | tail -n1 | cut -d= -f2-)
-              if [ -z "$v" ]; then s="YOK"
-              elif echo "$v" | grep -q "your_"; then s="YER TUTUCU (gecersiz)"
-              else s="VAR"; fi
-              echo "$f $k: $s"
+              if grep -q "^$k=." "$f"; then echo "$f $k: VAR"; else echo "$f $k: EKSIK"; fi
             done
           done
 
