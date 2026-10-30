@@ -45,6 +45,29 @@ jobs:
             touch local.dev.properties
           fi
 
+          # Uygulama NUVIO_ onekli anahtarlari okuyor; mevcut SUPABASE_ degerlerini bu adlarla da yaz
+          for f in local.properties local.dev.properties; do
+            sed -i 's/\r$//' "$f"
+            echo >> "$f"
+            for k in SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_FALLBACK_URL; do
+              v=$(grep -E "^(NUVIO_)?${k}=" "$f" | tail -n1 | cut -d= -f2-)
+              if [ -n "$v" ]; then
+                echo "NUVIO_${k}=${v}" >> "$f"
+              fi
+            done
+          done
+
+          echo "=== kontrol (degerler gosterilmez) ==="
+          for f in local.properties local.dev.properties; do
+            for k in NUVIO_SUPABASE_URL NUVIO_SUPABASE_ANON_KEY AVATAR_PUBLIC_BASE_URL; do
+              v=$(grep -E "^${k}=" "$f" | tail -n1 | cut -d= -f2-)
+              if [ -z "$v" ]; then s="YOK"
+              elif echo "$v" | grep -q "your_"; then s="YER TUTUCU (gecersiz)"
+              else s="VAR"; fi
+              echo "$f $k: $s"
+            done
+          done
+
       - name: Prepare CI signing config
         run: |
           keytool -genkeypair \
